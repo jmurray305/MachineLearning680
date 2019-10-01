@@ -1,0 +1,102 @@
+---
+title: "Week1KNN"
+author: "Justin Murray"
+date: "9/9/2019"
+output:
+  html_document: default
+  pdf_document: default
+---
+
+```{r, echo=FALSE}
+rm(list = ls())
+graphics.off()
+cat("\014") 
+```
+<h1>KNN from scratch</h1>
+
+
+A K-Nearest Neighbors or KNN algorithm is one of the simplest algorithm used for classification and is a great starting point in learning about Machine Learning (ML) and/or algorithms. Knn is a lazy learning algorithm that does not make assupmtions on the underlying data distrubution.
+
+Some quick pros and cons of KNN
+
+* Pro
+  + No assumptions on data - nonlinear data
+  + Simple algorithm
+  + Versatile - classification or regression
+
+* Cons
+  + Computationally expensive - stores all of the traning data
+  + High Memory requirements
+  + Prediction stage might lag due to big N
+
+<h3> Step 1: Datasets, Libraries, and Plots </h3>
+
+```{r, include=FALSE}
+library(ggplot2)
+library(DescTools)
+library(data.table)
+MyDF <- (iris) 
+
+#"C:\\Users\\Paul\\OneDrive\\Regis\\!MSDS660Stats\\Wk1\\foo.csv Dont know if you want me to leave this since the iris dataset comes loaded with R.
+```
+
+Explore the iris dataset with ggplot2 and group them on Petal Width and Length and Species to see if there are defined groups
+
+```{r}
+ggplot(MyDF, aes(x=Petal.Length, y = Petal.Width, color=Species)) +
+  geom_point()
+```
+
+From the above plot you can see there are three distinct groupings of Speices based on their Petal width and length. Lets pick a point in the large gap between Setosa and Versicolora with Petal Length of 2.25 and Petal Width of 0.75 and plot it with all the others. After ploting lets 
+<h2> Methods and Results </h2>
+* _TEST A NEW FLOWER_
+
+Creating a test point to and using the EuclDist function to predict which group/nearest neighbors to predict the speices it belongs to</h2>
+```{r}
+ggplot(MyDF, aes(x = Petal.Length, y = Petal.Width, col = Species)) + 
+  geom_point() +
+  geom_point(aes(x=2.25, y=0.75), colour="black", shape=4)
+```
+
+```{r, include=FALSE}
+myTestIris <- iris
+MyNewIris = data.frame("Petal.Length"=5.5, "Petal.Width"=1.625)
+euclDist <- function(x,y){
+  return(
+    sqrt((MyNewIris$Petal.Length - x)^2 + (MyNewIris$Petal.Width - y)^2) 
+        )
+}
+```
+
+```{r}
+MyK = 3
+MyIris3 = iris
+MyIris3$Dist = mapply(FUN = euclDist, MyIris3$Petal.Width, MyIris3$Petal.Length)
+attach(MyIris3); MyIris3 <- MyIris3[order(Dist),];detach(MyIris3)
+
+paste('The new Iris is classified as belonging to the',
+      DescTools::Mode(MyIris3[1:MyK, 5]),
+      'species.'
+)
+
+```
+The classifcation function WORKED!!! It classified our point (5.5,1.625) as beloning to Species Versicolor. Lets test again to see if it was a fluck or if we are on the correct path. Lets use a point on the edge of versicolor and virginica. The new test point will be (4.8,1.625) and since this could be either species bumping up the K var will help narrow down the classification
+```{r echo=FALSE}
+ggplot(iris, aes(x = Petal.Length, y = Petal.Width, col = Species)) + 
+  geom_point() +
+  annotate("text", x=4.8, y=1.625, label="X")
+
+MyK = 9
+MyNewIris = data.frame("Petal.Length"=4.8, "Petal.Width"=1.625)
+
+MyIris3 = iris
+MyIris3$Dist = mapply(FUN = euclDist, MyIris3$Petal.Width, MyIris3$Petal.Length)
+attach(MyIris3); MyIris3 <- MyIris3[order(Dist),];detach(MyIris3)
+
+paste('The new Iris is classified as belonging to the',
+      DescTools::Mode(MyIris3[1:MyK, 5]),
+      'species.'
+)
+```
+<h2> Conclusion</h1>
+SUCCESS AGAIN!!! The KNN is working. In this assignment we learned about the K-Nearest Neighbor algorithm and its pros and cons. This KNN algorithm we created is really simple, easy to apply method for classifcation ML while being really powerful when used in the correct way with the correct data and a get intro to ML. In the End this algorithm was an overall success in this application of classifying a new Iris species
