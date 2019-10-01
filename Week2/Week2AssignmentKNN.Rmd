@@ -1,0 +1,135 @@
+---
+title: "Week2Knn"
+author: "Justin Murray"
+date: "9/18/2019"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## KNN
+
+This week we jumped in deeper into KNN using the KNN package in the class library. The data we are using this week is from the UCI site. The data is related to a Portuguese direct marketing banking campaign that was based on phone calls. Using this data I will be fine tuning the KNN settings (mainly just the K value) to optimize the classification algorithm.
+
+
+
+```{r include=FALSE}
+rm(list = ls()) 
+graphics.off()
+cat("\014")  
+library(ggplot2)
+library(class)
+library(reshape)
+library(Rfast)
+library(caret)
+require(plyr)
+# source("C:\\Users\\pandr\\OneDrive\\R_code\\installPackages.R")
+setwd('/Users/justinmurray/Desktop/ML680/Week2/')
+MyBank = read.csv("bank-full.csv", sep = ";")
+normalize <- function(x) {
+  return ((x - min(x)) / (max(x) - min(x)))
+}
+
+```
+
+## Data Breakdown
+A quick look at the data and how it is coming in
+<style> 
+  table, th, td {
+    border: 1px solid black;
+  }
+  th, td {
+    padding: 5px;
+  }
+</style>
+ <!-- This creates the table -->
+<table style="width:100%">
+  <tr><th>Name</th><th>Data Type</th><th>Sample</th></tr>
+  <tr><td>Age</td><td>Numeric</td><td></td></tr>
+  <tr><td>Job type</td><td>Categorical</td><td>Admin, Blue Collar, Retired</td></tr>
+  <tr><td>Marital Status</td><td>Categorical</td><td>'divorced','married','single','unknown'; note: 'divorced' means divorced or widowed)</td><</tr>
+  <tr><td>Education</td><td>Categorical</td><td>basic.4y, basic.9y, high.schoolr</td></tr>
+  <tr><td>default</td><td>categorical</td><td> yes, no, unknow</td></tr>
+  <tr><td>housing</td><td>categorical</td><td> yes, no, unknow</td></tr>
+  <tr><td>loan</td><td>categorical</td><td> yes, no, unknow</td></tr>
+  <tr><td>contact</td><td>categorical</td><td> cellular, telephone</td></tr>
+  <tr><td>month</td><td>categorical</td><td>Jan, Feb, Mar</td></tr>
+  tr><td>day_of_week</td><td>categorical</td><td>mon, tue, wed</td></tr>
+</table>
+
+```{r Cleaning, echo=FALSE}
+
+normBalance <- as.data.frame(lapply(MyBank[6], normalize))
+MyBank$normalBalance = normBalance$balance
+str(MyBank)
+
+MyBank$month = revalue(x = MyBank$month, c("jan" = 1, "feb" = 2, "mar" = 3, "apr" = 4 ,"may" = 5 , "jun" = 6,
+                                            "jul" = 7, "aug" = 8, "sep" = 9, "oct" = 10, "nov" = 11, "dec" = 12))
+MyBank$month = as.numeric(MyBank$month)
+MyBank$loan = revalue(x = MyBank$loan, c("no" = 0, "yes"= 1))
+MyBank$loan = as.numeric(MyBank$loan)
+MyBank$default = revalue(x = MyBank$default, c("no" = 0, "yes"= 1))
+MyBank$default = as.numeric(MyBank$default)
+
+header = c("age","default","loan","day","campaign","pdays","previous","month","normalBalance","term")
+BankNew <- MyBank[header]
+str(BankNew)
+```
+
+let's see how each variable is distributed with the value "term" using the melt function then use ggplot to plot a boxplot.
+```{r echo=FALSE}
+
+MyBankMelt <- melt(BankNew, id.vars = "term")
+
+ggplot(MyBankMelt, aes(x = variable, y = value)) + 
+  geom_boxplot()
+
+
+```
+As you can see there a few outliers in the P-days column. Let's run the KNN to see if we get a decent Accuracy. So far the data looks good lets start setting up variables for the KNN. First, we need to get a pseudorandom number using so we can reproduce this experiment. Then we need to separate our data into a training and test sets our algorithm can use. 
+```{r}
+set.seed(1999) # For academic purposes when using a pseudorandom function and party like its 1999
+BankNew$Set <- sample(c("training", "test"), nrow(BankNew), replace = TRUE, prob = c(0.8, 0.2)) 
+head(BankNew$Set, n = 10)
+
+MyBankLevels <- levels(BankNew$term) # Might what this later to convert numeric Sex back to factor or character
+BankNew$term <- as.numeric(BankNew$term)
+```
+
+
+
+```{r}
+BTraining <- subset(BankNew, Set == "training", select = 1 : 10)
+BTest <- subset(BankNew, Set == "test", select = 1 : 10)
+nrow(BTraining) + nrow(BTest) # Should be 45211
+
+str(BankNew)
+
+cl = BTraining[,10]
+MyPred <- class::knn(BTraining, BTest,cl=BTraining$term,k=3)
+Actual <- BTest$term
+MyConfusionMatrix <- table(Actual, MyPred)
+MyConfusionMatrix
+caret::confusionMatrix(MyConfusionMatrix)
+
+
+MyPred <- class::knn(BTraining, BTest,cl=BTraining$term,k=5) 
+Actual <- BTest$term
+MyConfusionMatrix <- table(Actual, MyPred)
+MyConfusionMatrix
+caret::confusionMatrix(MyConfusionMatrix)
+
+
+MyPred <- class::knn(BTraining, BTest,cl=BTraining$term,k=7) 
+Actual <- BTest$term
+MyConfusionMatrix <- table(Actual, MyPred)
+MyConfusionMatrix
+caret::confusionMatrix(MyConfusionMatrix)
+
+```
+
+After running the KNN it looks like the best K setting is 3 with 0.8952. We could most likely normalizing more columns like pday or including more data like duration. But the duration attribute highly affects the output target (e.g., if duration=0 then y='no'). Yet, the duration is not known before a call is performed. Also, after the end of the call y is obviously known. Thus, this input should only be included for benchmark purposes and should be discarded if the intention is to have a realistic predictive model.
+
+
