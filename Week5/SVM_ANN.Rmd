@@ -1,0 +1,170 @@
+---
+title: "Week5_SVM_ANN"
+author: "Justin Murray"
+date: "10/11/2019"
+output: html_document
+---
+
+```{r include=FALSE}
+rm(list = ls()) 
+graphics.off()
+cat("\014") 
+```
+
+## Intro
+Artificial Neural Networks ANN and Support Vector Machines SVMs are two popular supervised machine learning and classification.Artificial Neural Networks ANN and Support Vector Machines SVMs are two popular supervised machine learning and classification. It's often not clear on which one method is better to use and often comes down to what answers you are trying to answer. SVMs are of the first option because they avoid ANN's two major weaknesses.
+* ANN's often converge on local minima rath than golbal
+* ANN's often over fit if traing goes on too long
+
+In this assignment we will try to classify mushrooms as edible or poisonous based on many attributes. Here are the first 10 attributes:
+
+<style> 
+  table, th, td {
+    border: 1px solid black;
+  }
+  th, td {
+    padding: 5px;
+  }
+</style>
+<table style="width:100%">
+  <tr>
+    <th>Attribute</th>
+    <th>Factors</th>
+  </tr>
+  <tr>
+    <td>cap-shape</td>
+    <td>bell=b,conical=c,convex=x,flat=f, knobbed=k,sunken=s</td>
+  </tr>
+  <tr>
+    <td>cap-surface</td>
+    <td>fibrous=f grooves=g scaly=y smooth=s</td>
+  </tr>
+  <tr>
+    <td>cap-color</td>
+    <td>rown=n, buff=b, cinnamon=c, gray=g, green=r, pink=p, purple=u, red=e, white=w, yellow=y</td>
+  </tr>
+  <tr>
+    <td>bruises</td>
+    <td>bruises=t,no=f</td>
+  </tr>
+  <tr>
+    <td>odor</td>
+    <td>almond=a,anise=l,creosote=c,fishy=y,foul=f, musty=m,none=n,pungent=p,spicy=s</td>
+  </tr>
+  <tr>
+    <td>gill-attachment</td>
+    <td>attached=a,descending=d,free=f,notched=n</td>
+  </tr>
+  <tr>
+    <td>gill-spacing</td>
+    <td>close=c,crowded=w,distant=d</td>
+  </tr>
+  <tr>
+    <td>gill-size/td>
+    <td>broad=b,narrow=n<</td>
+  </tr>
+  <tr>
+    <td>gill-color</td>
+    <td>black=k,brown=n,buff=b,chocolate=h,gray=g, green=r,orange=o,pink=p,purple=u,red=e, white=w,yellow=y</td>
+  </tr>
+  <tr>
+    <td>stalk-shape</td>
+    <td>enlarging=e,tapering=t</td>
+  </tr>
+</table> 
+
+```{r Load CSV and train/test, include=FALSE}
+library(neuralnet)
+library(e1071)
+library(caret)
+
+# source("C:\\Users\\pandr\\OneDrive\\R_code\\installPackages.R")
+setwd('/Users/justinmurray/Desktop/ML680/Week5/data')
+mush = read.csv('mushrooms.csv')
+str(mush)
+colSums(is.na(mush))
+
+#droping Veil Type (only has one type as 'partial')
+mush = data.frame(mush[, -16])
+
+#Split data into Test and Train
+set.seed(13)
+ind = sample(2, nrow(mush), replace = TRUE , prob = c(0.7,0.3))
+trainset = mush[ind == 1, ]
+testset = mush[ind == 2, ]
+```
+
+# SVM
+Support Vector Machines (SVM) is used to train a support vector machine can be used to carry out general regression and classification as well as density-estimation. SVMs are a discriminative classifier defined by a hyperplane that separates data points. If the data clustered close together we can use the kernel trick by applying a transformation and add one more dimension so the SVM can create a hyperplane the separates the datapoints.
+```{r}
+svm.model = svm(class ~ ., data = trainset, kernel = "linear", cost=1, gamma = 1/ncol(trainset))
+svm.model2 = svm(class ~ ., data = trainset, kernel = "radial" , cost=1, gamma = 1/ncol(trainset))
+svm.model3 = svm(class ~ ., data = trainset, kernel = "polynomial" , cost=1, gamma = 1/ncol(trainset))
+summary(svm.model)
+svm.pred = predict(svm.model, testset[, !names(testset) %in% c("class")])
+svm.pred2 = predict(svm.model2, testset[, !names(testset) %in% c("class")])
+svm.pred3 = predict(svm.model3, testset[, !names(testset) %in% c("class")])
+svm.table = table(svm.pred, testset$class)
+svm.table2 = table(svm.pred2, testset$class)
+svm.table3 = table(svm.pred3, testset$class)
+
+svm.table
+svm.table2
+svm.table3
+```
+
+```{r SVM accuracy}
+confusionMatrix(svm.table)
+confusionMatrix(svm.table2)
+confusionMatrix(svm.table3)
+```
+Here are the results from the SVM with different Kernel. All performing within 1% of each other and if we change the seed number they can all preform with 100% accuracy
+* Linear = 100
+* radial = 99.84
+* polynomial = 99.88
+
+## ANN
+ANN is an information processing model inspired by the biological neuron system that can learn by examples. It is made up of a massive number of highly interconnected processing elements known as neurons that are used to solve problems. In the learning phase, the network learns by adjusting the weights to predict the correct class label go a given input. The Neural network is made up of 3 types of connected nodes (input, hidden, and output). The connection strength between neurons is called weights. There are two types of weights, greater than zero(excitation status) less than zero (inhibition). The major advantages of an NN are it can find non-linear relationships in independent and dependent variables, can train large datasets efficiently and it's a nonparametric model so that one drop errors in the estimation of parameters. However, the main con of NN's are it often gets stuck in local minimums rather than the global and it may overfit if left training too long. Activation functions of a node define the output of that node given an input or set of inputs. The topology of a neural network refers to the way the nodes are connected and is an import factor in network functioning and learning. Once the network is created backpropagation is used as the main tool in which the NN learnings. Its the device that tells the network whether or not the net made a mistake when making a prediction. While a NN propagates the signal of the input data forward through the network, backpropagation informs the network about the error in reverse through the network. Here is a breakdown of how it works
+* The network makes a guess about the data, using its nodes
+* The network is measured with a loss function
+* The error is backpropagated to adjuct the wrong/error nodes
+Backpropagation takes the error with the wrong guess and uses that error to adjust the network's parameters in the direction of less error.
+```{r ANN setup Train / Test sets, include=FALSE}
+mush2 = as.data.frame(unclass(mush))
+convert = sapply(mush,is.factor)
+mush2=sapply(mush[,convert], unclass)
+mush2 = cbind(mush2[, !convert], mush2)
+mush2 = data.frame(mush2)
+
+#Training and Test
+ind = sample(2, nrow(mush2), replace = TRUE , prob = c(0.7,0.3))
+trainset2 = mush2[ind == 1, ]
+testset2 = mush2[ind == 2, ]
+```
+
+```{r echo=TRUE}
+# train neutal network
+mush2$class = as.factor(mush2$class)
+nn=neuralnet(class~.,data=mush2, hidden = 3, act.fct = "logistic", linear.output = FALSE)
+
+nn$result.matrix
+head(nn$generalized.weights[[1]])
+```
+
+```{r echo=FALSE}
+#Visualizing the NN
+plot(nn)
+```
+
+```{r}
+#Predict
+pred = predict(nn,testset2)
+table(testset2$class == 1, pred[,1] > 0.5)
+confusionMatrix(table(testset2$class == 1, pred[,1] > 0.5))
+```
+
+97.06% Accuracy for ANN.
+
+## Conclusion
+ANN vs SVM - while these algorithms share the same concept of using a linear learning model for pattern recognition. The main difference is how they classify non-linear data. SVM utilizes non-linear mapping to make the data separable (kernel is Key) ANN has a ton of hidden layers with size h1 through hn depending on the number of features, plus bias parameters. While SVM consists of a set of support vectors, selected from the training set with a weight for each. One obvious advantage of ANN  over SVMs is that ANN may have any number of outputs, while SVMs have only one. In this assingment SVMs won but only by a few points but they both preformed really well.
+
