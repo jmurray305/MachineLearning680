@@ -1,0 +1,40 @@
+rm(list = ls()) 
+graphics.off()
+cat("\014") 
+
+library("dendextend")
+library("magrittr")
+
+
+# Hierarchical clustering
+# Hierarchical clustering (HC) creates a hierarchy of clusters and presents them in a dendrogram. HC does not reuire
+# the user to specify a number of clusters to begin. HC is a technique that tries to but a cluster with two steps: 
+# 1. Agglomerative - bottom up
+# 2. Divisive - top down
+# Before performing HC we need to determine how to figure out the distance to create clusters of sameness. There are 
+# Four distance functions to measusre similarity
+# 1. Single Linkage - Shortest distance between two points in a cluster
+# 2. Complete Linkage - Longest distance between two points in a cluster
+# 3. Average Linkage - Average distance between two points in a cluster
+# 4. Ward method - Sum of the Squared distance from each point to the mean of the merged clusters
+
+# source("C:\\Users\\pandr\\OneDrive\\R_code\\installPackages.R")
+setwd('/Users/justinmurray/Desktop/ML680/Week6/data')
+whole = read.csv("Wholesale_customers_data.csv")
+str(whole)
+whole = scale(whole, scale = TRUE)
+hc = hclust(dist(whole, method="euclidean"), method = "ward.D2")
+
+
+#plot the dendrogram
+plot(hc, hang = -0.01, cex = 0.7, labels = FALSE)
+hc2 = hclust(dist(whole), method="single")
+plot(hc2, hang = 0.1, cex = 0.7, labels = FALSE)
+
+
+# divisive Hierarchiacl clustering
+hcd = as.dendrogram(hc)
+plot(hcd, xlab = "Height", horiz = TRUE, labels = FALSE)
+hcd %>% set("branches_k_color", k = 3) %>% plot(horiz = TRUE)
+hcd %>% rect.dendrogram(k = 3, horiz = TRUE, border = 8, lty = 5, lwd = 2 ,labels=FALSE)
+abline(v = heights_per_k.dendrogram(hcd)["4"] + .1, lwd = 2, lty = 2, col = "blue")
