@@ -1,0 +1,118 @@
+---
+title: "PreformanceEvaluation"
+author: "Justin Murray"
+date: "10/28/2019"
+output: html_document
+---
+## Preformance Evaluation
+
+# Cross-validation
+ Is resampling procedure used to evaluate ML models with a limited data sample. The procedure has a single parameter which refers to the number of groups that a given data sample is to be split into, in this assignment we will be using a ten-fold cross-validation. Cross-validation is primarily used in applied maching learning to estimate the skill/accurarcy of a model on unseen data and can be preformed using an array of algorithms to determine which one is preforming the best. Cross validation is a popular method to use because  its simple to use and understand.
+ 
+# How Cross Validation works
+* Randomly shuffle the dataset
+* Split the dataset into K groups
+* For each unique group:
+  1. Take the group as a hold out / test dataset
+  2. Take remaining groups as training set
+  3. fit a model on the training set and evaluate it on the test set
+  4. Retain the evaluation score and discard the model
+* Summarized the skill of the model using the sample of model evaluation scores
+
+Lets start by preparating the data for Cross Validation:
+```{r Load Libraries and Data, include=FALSE}
+rm(list = ls())
+graphics.off()
+cat("\014") 
+library(caret)
+library(plyr)
+library(ggplot2)
+library(mlbench)
+set.seed(123)
+
+# source("C:\\Users\\pandr\\OneDrive\\R_code\\installPackages.R")
+setwd('/Users/justinmurray/Desktop/ML680/Week7/data')
+ab = read.csv('abalone.data', header = FALSE)
+names(ab) = c("sex", "length", "diameter", "height", "whole_weight", "shucked_weight", 
+              "viscera_weight", "shell_weight", "rings")
+```
+
+```{r Adding Features}
+
+ab1 = ab[c(9)]
+ab= ab[-c(9)]
+ab = transform(ab, volume = length * diameter * height)
+ab = transform(ab, mweight = whole_weight - shucked_weight)
+ab1 = transform(ab1, year = rings + 1.5)
+ab$year = ab1$year
+ab$sex = revalue(ab$sex, c("M"=1,"F"=2,"I"=3))
+```
+Quick EDA
+```{r EDA}
+qplot(shell_weight, year, data=ab, geom=c("point", "smooth"), color=sex) 
+qplot(shell_weight, year, data=ab, geom=c("point", "smooth"), method="lm", color=sex) 
+qplot(sex, year, data=ab, geom=c("point", "smooth"), method="lm", color=sex) 
+```
+
+```{r Control Setting}
+control1 = trainControl(method="repeatedcv", number=10, repeats=2)
+control = trainControl(method="adaptive_cv", number=10, repeats=2)
+metric = "Accuracy"
+```
+
+```{r  Model train - Year}
+# Predicting Age/Ring/Year(ring + 1.5)
+fit.knn = train(year~., data = ab, method= "knn",  preProcess="scale",trCrontrol = control)
+fit.rf = train(year~., data=ab, method="rf", preProcess="scale", trCrontrol = control)
+#fit.svm = train(year~., data=ab, method="svmRadial", preProcess="scale", trControl=control1)
+#fit.cart = train(year~., data=ab, method="rpart", preProcess="scale", trControl=control1)
+```
+
+```{r}
+#results = caret::resamples(list(KNN=fit.knn, RF=fit.rf, SVM=fit.svm, cart=fit.cart))
+results = caret::resamples(list(KNN=fit.knn, RF=fit.rf))
+```
+
+```{r}
+summary(results)
+# boxplot comparison
+bwplot(results)
+# Dot-plot comparison
+dotplot(results)
+summary(results)
+```
+Test Metric
+Some good test metrics to use for different problem types include:
+   
+Classification:
+   
+* Accuracy: x correct divided by y total instances. Easy to understand and widely used.
+* Kappa: easily understood as accuracy that takes the base distribution of classes into account.
+ 
+# Regression:
+* RMSE: root mean squared error. Again, easy to understand and widely used.
+* Rsquared: the goodness of fit or coefficient of determination.
+
+ROC and LogLoss are other popular measures.
+
+```{r Model train - sex}
+#Predicting Sex
+fit.knn2 = train(sex~., data=ab, method="knn", preProcess="scale", trControl=control1)
+fit.rpart2 = train(sex~., data=ab, method="rpart", preProcess="scale", trControl=control1)
+# Take a lot of computing power to finish but ends up as #2 
+#fit.rf2 = train(sex~., data=ab, method="rf", preProcess="scale", trControl=control1)
+fit.svm2 = train(sex~., data=ab, method="svmRadial", preProcess="scale", trControl=control1)
+fit.cart2 = train(sex~., data=ab, method="rpart", preProcess="scale", trControl=control1)
+```
+
+```{r}
+#results2 = resamples(list(knn=fit.knn2, rpart=fit.rpart2, rf=fit.rf2, svm=fit.svm2, cart=fit.cart2))
+results2 = resamples(list(knn=fit.knn2, rpart=fit.rpart2, svm=fit.svm2, cart=fit.cart2))
+```
+
+```{r}
+bwplot(results2)
+dotplot(results2)
+summary(results2)
+```
+Cross Validation is a great and simple way to compare multiple methods on the same dataset. It also can be used on a smaller dataset and does not waste data on a test/trainset. The main pro for Cross-Validation is its prone to less variation because it uses the entire traning set. While the main con is the higher computational costs, the model needs to be tained K times at the validation step plus one more time at the test step. With these models we are not getting the best accuracy but the best model is SVM followed by Random Forest. 
